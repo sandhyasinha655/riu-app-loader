@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- यह सबसे महत्वपूर्ण टैग है, यह मोबाइल स्क्रीन पर सही स्केलिंग सुनिश्चित करता है -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <title>RIU Cutting Order</title>
+
+    <style>
+        /* सभी डिफ़ॉल्ट मार्जिन और पैडिंग को हटा दें */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* स्क्रॉलबार को छिपाएं */
+            background-color: #ffffff; /* बैकग्राउंड को सफेद रखें */
+        }
+
+        /* लोडर को स्क्रीन के केंद्र में रखने के लिए स्टाइल */
+        #loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            color: #555;
+        }
+
+        /* iframe को पूरी स्क्रीन पर फैलाने के लिए स्टाइल */
+        #appFrame {
+            width: 100%;
+            height: 100%;
+            border: none; /* iframe के चारों ओर बॉर्डर हटा दें */
+            visibility: hidden; /* शुरुआत में इसे छिपाएं */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- जब तक ऐप लोड न हो जाए, तब तक यह संदेश दिखाई देगा -->
+    <div id="loader">Loading App...</div>
+
+    <!-- iframe जो आपके वेब ऐप को लोड करेगा -->
+    <iframe id="appFrame" src="https://script.google.com/macros/s/AKfycbxMn02oDLTrP7wzo8j7_V2sovMz9AtqfRwSPrBYNRand1q5PZEwjNcZfHQk5MwwXNYV/exec"></iframe>
+
+    <script>
+        const loader = document.getElementById('loader');
+        const iframe = document.getElementById('appFrame');
+
+        // जब iframe पूरी तरह से लोड हो जाए, तो इस फंक्शन को चलाएं
+        iframe.onload = function() {
+            // लोडर को छिपा दें
+            loader.style.display = 'none';
+            // अब iframe को दिखाएं
+            iframe.style.visibility = 'visible';
+        };
+    </script>
+
+</body>
+</html>
