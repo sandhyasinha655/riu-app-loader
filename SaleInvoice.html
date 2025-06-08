@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rajasthan Ispat Udyog - Sale Invoice Generator</title>
+  <style>
+    body { font-family: Arial; max-width: 950px; margin: 30px auto; background: #f6f9f9; }
+    .heading { text-align: center; font-size: 2em; margin-bottom: 8px; font-weight: bold; color: #2e4372; }
+    h2 { text-align: center; margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0 10px 0; }
+    th, td { border: 1px solid #bbb; padding: 7px 6px; text-align: center; }
+    th { background: #e0e7ef; }
+    input, select, textarea { padding: 6px; border-radius: 3px; border: 1px solid #bbb; margin-bottom: 8px; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
+    .form-row label { min-width: 90px; }
+    .btn { background: #2e4372; color: #fff; border: none; padding: 8px 15px; border-radius: 3px; cursor: pointer; margin-right: 6px;}
+    .btn:active { background: #1e2947; }
+    .totals-row td { font-weight: bold; background: #e0e7ef; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .footer { text-align: center; color: #888; font-size: 0.95em; margin-top: 30px; }
+    .remark-box { width: 100%; }
+    .invoice-section { background: #fff; border-radius: 8px; box-shadow: 0 0 8px #ccc; padding: 18px 16px; }
+    .hide { display: none; }
+    .print-save-btns { display: flex; justify-content: center; gap: 18px; margin-top: 25px; }
+    @media (max-width: 700px) {
+      body { max-width: 99vw; }
+      .form-row { flex-direction: column; }
+    }
+    @media print {
+      .print-save-btns, .btn, #calcForm, #prodTable, #invoiceSection, #distributionMsg, .footer, .form-row, #actualTruckWeight, #freightCharge, #additionalCharge, #remarks, #saleType { display: none !important; }
+      #printInvoiceArea { box-shadow: none; }
+      body { background: #fff; }
+    }
+  </style>
+  <!-- Add html2canvas and jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="heading">Rajasthan Ispat Udyog</div>
+  <h2>Sale Invoice Generator</h2>
+  <div class="invoice-section">
+
+    <!-- Product Entry Section -->
+    <h3>Step 1: Add Products</h3>
+    <div class="form-row">
+      <label>Product</label>
+      <select id="prodType">
+        <option>Angle</option>
+        <option>Beam</option>
+        <option>Bar</option>
+        <option>Channel</option>
+        <option>HR Sheet</option>
+        <option>HR Plate</option>
+        <option>HR Coil</option>
+        <option>NPB</option>
+        <option>WBP</option>
+        <option>Flats</option>
+        <option>Square</option>
+        <option>Other</option>
+      </select>
+      <label>Thickness (mm)</label>
+      <input type="number" id="prodThick" step="0.01" style="width:70px;">
+      <label>Width/Dia (mm)</label>
+      <input type="number" id="prodWidth" step="0.01" style="width:70px;">
+      <label>Length</label>
+      <input type="number" id="prodLen" step="0.01" style="width:80px;">
+      <select id="prodLenUnit" style="width:65px;">
+        <option value="mm">MM</option>
+        <option value="ft">Foot</option>
+        <option value="m">Meter</option>
+      </select>
+      <label>Qty</label>
+      <input type="number" id="prodQty" min="1" value="1" style="width:50px;">
+      <button class="btn" type="button" onclick="addProduct()">Add Product</button>
+    </div>
+    <div>
+      <table id="prodTable">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th>Product</th>
+            <th>Thickness</th>
+            <th>Width/Dia</th>
+            <th>Length</th>
+            <th>Qty</th>
+            <th>Calc. Total Wt (kg)</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="prodTableBody"></tbody>
+      </table>
+    </div>
+    <div class="form-row">
+      <label>Actual Truck Weight (kg):</label>
+      <input type="number" id="actualTruckWeight" step="0.01" style="width:130px;">
+      <button class="btn" type="button" onclick="distributeWeight()">Distribute Product-wise Weight</button>
+    </div>
+    <div id="distributionMsg"></div>
+
+    <!-- Price Entry & Invoice Section -->
+    <div id="invoiceSection" class="hide">
+      <h3>Step 2: Enter Rates & Generate Invoice</h3>
+      <div id="printInvoiceArea">
+        <div style="text-align:center; font-size:1.5em; font-weight:bold; margin-bottom:10px; color:#2e4372;">Rajasthan Ispat Udyog</div>
+        <div style="text-align:center; font-size:1.1em; font-weight:bold; margin-bottom:16px;">SALE INVOICE</div>
+        <table id="invoiceTable">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Product</th>
+              <th>Spec (T × W × L mm)</th>
+              <th>Qty</th>
+              <th>Distributed Wt (kg)</th>
+              <th>Rate<br>(₹/kg)</th>
+              <th>Amount<br>(₹)</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceTableBody"></tbody>
+        </table>
+        <div class="form-row">
+          <label>Freight Charge (₹):</label>
+          <input type="number" id="freightCharge" step="0.01" value="0">
+          <label>Additional Charge (₹):</label>
+          <input type="number" id="additionalCharge" step="0.01" value="0">
+        </div>
+        <div class="form-row">
+          <label>Remarks:</label>
+          <textarea id="remarks" rows="2" class="remark-box"></textarea>
+        </div>
+        <div class="form-row">
+          <label>Sale Type:</label>
+          <select id="saleType" onchange="updateTaxLabels()">
+            <option value="local" selected>Intra-state (SGST+CGST)</option>
+            <option value="igst">Inter-state (IGST)</option>
+          </select>
+        </div>
+        <button class="btn" type="button" onclick="generateInvoice()">Generate Invoice</button>
+        <div id="invoiceResult"></div>
+      </div>
+      <div class="print-save-btns">
+        <button class="btn" onclick="printInvoice()" type="button">Print Invoice</button>
+        <button class="btn" onclick="savePDF()" type="button">Save as PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    &copy; Rajasthan Ispat Udyog. All rights reserved.<br>
+    This calculator/invoice tool is for informational purposes only.<br>
+    Calculated and actual weights may differ by ±2-3% (up to ±5%) due to manufacturing tolerances.<br>
+    Please verify all details before use.<br>
+  </div>
+
+  <script>
+    // Core Data
+    let products = [];
+    let distributedWeights = [];
+
+    // Helper: Convert length to MM
+    function convertLengthToMM(val, unit) {
+      if (unit === "mm") return val;
+      if (unit === "ft") return val * 304.8; // 1 foot = 304.8 mm
+      if (unit === "m")  return val * 1000;  // 1 meter = 1000 mm
+      return val;
+    }
+
+    function addProduct() {
+      const prodType = document.getElementById('prodType').value;
+      const t = parseFloat(document.getElementById('prodThick').value) || 0;
+      const w = parseFloat(document.getElementById('prodWidth').value) || 0;
+      const l = parseFloat(document.getElementById('prodLen').value) || 0;
+      const lUnit = document.getElementById('prodLenUnit').value;
+      const qty = parseInt(document.getElementById('prodQty').value) || 1;
+      if (!prodType || t <= 0 || w <= 0 || l <= 0 || qty <= 0) {
+        alert("Please enter valid product details!");
+        return;
+      }
+      // Convert length to mm
+      const l_mm = convertLengthToMM(l, lUnit);
+
+      // Calculate total weight for this product (rectangle logic)
+      const volPerPc = (t/10) * (w/10) * (l_mm/10); // cm × cm × cm, from mm to cm
+      const density = 7.85; // g/cm³
+      const wtPerPc = volPerPc * density / 1000; // in kg
+      const totalWt = wtPerPc * qty;
+
+      products.push({
+        prodType, t, w,
+        l: l_mm, // store in mm for further calculation
+        l_disp: l, // user input value
+        l_unit: lUnit,
+        qty,
+        calcWt: totalWt,
+        wtPerPc: wtPerPc
+      });
+      updateProductsTable();
+      clearProductInputs();
+      document.getElementById('invoiceSection').classList.add('hide');
+      document.getElementById('distributionMsg').innerHTML = "";
+    }
+
+    function clearProductInputs() {
+      document.getElementById('prodThick').value = "";
+      document.getElementById('prodWidth').value = "";
+      document.getElementById('prodLen').value = "";
+      document.getElementById('prodQty').value = 1;
+      document.getElementById('prodLenUnit').value = "mm";
+    }
+
+    function updateProductsTable() {
+      const tbody = document.getElementById('prodTableBody');
+      tbody.innerHTML = "";
+      products.forEach((p, i) => {
+        tbody.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td>${p.prodType}</td>
+          <td>${p.t}</td>
+          <td>${p.w}</td>
+          <td>${p.l_disp} ${p.l_unit.toUpperCase()}</td>
+          <td>${p.qty}</td>
+          <td>${p.calcWt.toFixed(2)}</td>
+          <td><button class="btn" style="background:#d13c3c;" onclick="deleteProduct(${i})">Delete</button></td>
+        </tr>`;
+      });
+    }
+
+    function deleteProduct(idx) {
+      products.splice(idx, 1);
+      updateProductsTable();
+      document.getElementById('invoiceSection').classList.add('hide');
+      document.getElementById('distributionMsg').innerHTML = "";
+    }
+
+    function distributeWeight() {
+      if (products.length === 0) {
+        alert('Please add at least one product!');
+        return;
+      }
+      const actualTruckWeight = parseFloat(document.getElementById('actualTruckWeight').value) || 0;
+      if (actualTruckWeight <= 0) {
+        alert('Please enter actual truck weight!');
+        return;
+      }
+      // Calc total calculated weight
+      const totalCalcWeight = products.reduce((sum, p) => sum + p.calcWt, 0);
+      // Proportionate distribution
+      distributedWeights = products.map(p => {
+        let propWt = (p.calcWt / totalCalcWeight) * actualTruckWeight;
+        return { ...p, distWt: propWt };
+      });
+      // Table for invoice
+      updateInvoiceTable();
+      document.getElementById('invoiceSection').classList.remove('hide');
+      document.getElementById('distributionMsg').innerHTML = "<b>Weight distributed proportionately to all products!</b>";
+    }
+
+    function updateInvoiceTable() {
+      const tbody = document.getElementById('invoiceTableBody');
+      tbody.innerHTML = "";
+      distributedWeights.forEach((p, i) => {
+        tbody.innerHTML += `<tr>
+          <td>${i+1}</td>
+          <td>${p.prodType}</td>
+          <td>${p.t} × ${p.w} × ${p.l_disp} ${p.l_unit.toUpperCase()}</td>
+          <td>${p.qty}</td>
+          <td>${p.distWt.toFixed(2)}</td>
+          <td>
+            <input type="number" id="rate_${i}" value="" style="width:80px;" min="0" step="0.01" placeholder="₹/kg">
+          </td>
+          <td id="amt_${i}">0.00</td>
+        </tr>`;
+      });
+    }
+
+    // Invoice Generation
+    function generateInvoice() {
+      let invoiceRows = [];
+      let totalTaxable = 0;
+      distributedWeights.forEach((p, i) => {
+        let rate = parseFloat(document.getElementById(`rate_${i}`).value) || 0;
+        let amount = rate * p.distWt;
+        totalTaxable += amount;
+        invoiceRows.push({
+          ...p, rate, amount
+        });
+        document.getElementById(`amt_${i}`).textContent = amount.toFixed(2);
+      });
+
+      // Extra charges
+      let freight = parseFloat(document.getElementById('freightCharge').value) || 0;
+      let addl = parseFloat(document.getElementById('additionalCharge').value) || 0;
+      let remarks = document.getElementById('remarks').value || '';
+      let saleType = document.getElementById('saleType').value;
+
+      // GST
+      let gstRate = 0.09; // 9%
+      let sgst = saleType === 'local' ? totalTaxable * gstRate : 0;
+      let cgst = saleType === 'local' ? totalTaxable * gstRate : 0;
+      let igst = saleType === 'igst' ? totalTaxable * 2 * gstRate : 0;
+      let gstTotal = sgst + cgst + igst;
+      let grandTotal = totalTaxable + gstTotal + freight + addl;
+
+      // Result Table
+      let html = `<h4 style="text-align:center;margin-top:0;color:#2e4372;">Rajasthan Ispat Udyog</h4>
+      <h5 style="text-align:center;margin-bottom:15px;font-size:1.2em;">SALE INVOICE</h5>
+      <table>
+        <thead>
+        <tr>
+          <th>S.No.</th>
+          <th>Product</th>
+          <th>Specification</th>
+          <th>Qty</th>
+          <th>Weight (kg)</th>
+          <th>Rate (₹/kg)</th>
+          <th>Amount (₹)</th>
+        </tr>
+        </thead>
+        <tbody>`;
+      invoiceRows.forEach((row, i) => {
+        html += `<tr>
+          <td>${i+1}</td>
+          <td>${row.prodType}</td>
+          <td>${row.t} × ${row.w} × ${row.l_disp} ${row.l_unit.toUpperCase()}</td>
+          <td>${row.qty}</td>
+          <td>${row.distWt.toFixed(2)}</td>
+          <td>${row.rate.toFixed(2)}</td>
+          <td>${row.amount.toFixed(2)}</td>
+        </tr>`;
+      });
+      html += `
+        <tr class="totals-row"><td colspan="6" class="right">Taxable Value (₹)</td>
+        <td>${totalTaxable.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">SGST @9%</td><td>${sgst.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">CGST @9%</td><td>${cgst.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">IGST @18%</td><td>${igst.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">Total GST</td><td>${gstTotal.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">Freight Charge</td><td>${freight.toFixed(2)}</td></tr>
+        <tr><td colspan="6" class="right">Additional Charge</td><td>${addl.toFixed(2)}</td></tr>
+        <tr class="totals-row"><td colspan="6" class="right">Grand Total (₹)</td>
+        <td>${grandTotal.toFixed(2)}</td></tr>
+      </tbody></table>`;
+      if (remarks.trim() !== "") {
+        html += `<div><b>Remarks:</b> ${remarks}</div>`;
+      }
+      html += `<div style="font-size:0.95em;color:#888;margin-top:7px;">All amounts are in INR.<br>
+      Tax calculations are automated for your convenience.<br>
+      Please verify before issuing official invoice.</div>`;
+      document.getElementById('invoiceResult').innerHTML = html;
+    }
+
+    function updateTaxLabels() {
+      const saleType = document.getElementById('saleType').value;
+      // No extra logic here, just for future extension
+    }
+
+    // Print Invoice Function
+    function printInvoice() {
+      const printContents = document.getElementById('printInvoiceArea').innerHTML;
+      const originalContents = document.body.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      window.location.reload();
+    }
+
+    // Save as PDF Function (using jsPDF and html2canvas)
+    function savePDF() {
+      const { jsPDF } = window.jspdf;
+      let doc = new jsPDF('l', 'pt', 'a4');
+      let pdfArea = document.getElementById('printInvoiceArea');
+      html2canvas(pdfArea).then(function(canvas) {
+        let imgData = canvas.toDataURL('image/png');
+        let width = doc.internal.pageSize.getWidth();
+        let height = (canvas.height * width) / canvas.width;
+        doc.addImage(imgData, 'PNG', 20, 20, width - 40, height - 40);
+        doc.save('Rajasthan_Ispat_Invoice.pdf');
+      });
+    }
+  </script>
+</body>
+</html>
