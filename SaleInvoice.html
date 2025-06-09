@@ -2,6 +2,8 @@
 <html>
 <head>
   <title>Rajasthan Ispat Udyog - Sale Invoice Generator</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial; max-width: 950px; margin: 30px auto; background: #f6f9f9; }
     .heading { text-align: center; font-size: 2em; margin-bottom: 8px; font-weight: bold; color: #2e4372; }
@@ -32,7 +34,6 @@
       body { background: #fff; }
     }
   </style>
-  <!-- Add html2canvas and jsPDF for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -153,15 +154,13 @@
   </div>
 
   <script>
-    // Core Data
     let products = [];
     let distributedWeights = [];
 
-    // Helper: Convert length to MM
     function convertLengthToMM(val, unit) {
       if (unit === "mm") return val;
-      if (unit === "ft") return val * 304.8; // 1 foot = 304.8 mm
-      if (unit === "m")  return val * 1000;  // 1 meter = 1000 mm
+      if (unit === "ft") return val * 304.8;
+      if (unit === "m")  return val * 1000;
       return val;
     }
 
@@ -176,19 +175,15 @@
         alert("Please enter valid product details!");
         return;
       }
-      // Convert length to mm
       const l_mm = convertLengthToMM(l, lUnit);
-
-      // Calculate total weight for this product (rectangle logic)
-      const volPerPc = (t/10) * (w/10) * (l_mm/10); // cm × cm × cm, from mm to cm
-      const density = 7.85; // g/cm³
-      const wtPerPc = volPerPc * density / 1000; // in kg
+      const volPerPc = (t/10) * (w/10) * (l_mm/10);
+      const density = 7.85;
+      const wtPerPc = volPerPc * density / 1000;
       const totalWt = wtPerPc * qty;
-
       products.push({
         prodType, t, w,
-        l: l_mm, // store in mm for further calculation
-        l_disp: l, // user input value
+        l: l_mm,
+        l_disp: l,
         l_unit: lUnit,
         qty,
         calcWt: totalWt,
@@ -242,14 +237,11 @@
         alert('Please enter actual truck weight!');
         return;
       }
-      // Calc total calculated weight
       const totalCalcWeight = products.reduce((sum, p) => sum + p.calcWt, 0);
-      // Proportionate distribution
       distributedWeights = products.map(p => {
         let propWt = (p.calcWt / totalCalcWeight) * actualTruckWeight;
         return { ...p, distWt: propWt };
       });
-      // Table for invoice
       updateInvoiceTable();
       document.getElementById('invoiceSection').classList.remove('hide');
       document.getElementById('distributionMsg').innerHTML = "<b>Weight distributed proportionately to all products!</b>";
@@ -273,7 +265,6 @@
       });
     }
 
-    // Invoice Generation
     function generateInvoice() {
       let invoiceRows = [];
       let totalTaxable = 0;
@@ -286,22 +277,18 @@
         });
         document.getElementById(`amt_${i}`).textContent = amount.toFixed(2);
       });
-
-      // Extra charges
       let freight = parseFloat(document.getElementById('freightCharge').value) || 0;
       let addl = parseFloat(document.getElementById('additionalCharge').value) || 0;
       let remarks = document.getElementById('remarks').value || '';
       let saleType = document.getElementById('saleType').value;
-
-      // GST
-      let gstRate = 0.09; // 9%
-      let sgst = saleType === 'local' ? totalTaxable * gstRate : 0;
-      let cgst = saleType === 'local' ? totalTaxable * gstRate : 0;
-      let igst = saleType === 'igst' ? totalTaxable * 2 * gstRate : 0;
+      let gstRate = 0.09;
+      // GST should be calculated on Taxable + Freight + Additional Charge
+      let gstBase = totalTaxable + freight + addl;
+      let sgst = saleType === 'local' ? gstBase * gstRate : 0;
+      let cgst = saleType === 'local' ? gstBase * gstRate : 0;
+      let igst = saleType === 'igst' ? gstBase * 2 * gstRate : 0;
       let gstTotal = sgst + cgst + igst;
-      let grandTotal = totalTaxable + gstTotal + freight + addl;
-
-      // Result Table
+      let grandTotal = gstBase + gstTotal;
       let html = `<h4 style="text-align:center;margin-top:0;color:#2e4372;">Rajasthan Ispat Udyog</h4>
       <h5 style="text-align:center;margin-bottom:15px;font-size:1.2em;">SALE INVOICE</h5>
       <table>
@@ -329,54 +316,4 @@
         </tr>`;
       });
       html += `
-        <tr class="totals-row"><td colspan="6" class="right">Taxable Value (₹)</td>
-        <td>${totalTaxable.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">SGST @9%</td><td>${sgst.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">CGST @9%</td><td>${cgst.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">IGST @18%</td><td>${igst.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">Total GST</td><td>${gstTotal.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">Freight Charge</td><td>${freight.toFixed(2)}</td></tr>
-        <tr><td colspan="6" class="right">Additional Charge</td><td>${addl.toFixed(2)}</td></tr>
-        <tr class="totals-row"><td colspan="6" class="right">Grand Total (₹)</td>
-        <td>${grandTotal.toFixed(2)}</td></tr>
-      </tbody></table>`;
-      if (remarks.trim() !== "") {
-        html += `<div><b>Remarks:</b> ${remarks}</div>`;
-      }
-      html += `<div style="font-size:0.95em;color:#888;margin-top:7px;">All amounts are in INR.<br>
-      Tax calculations are automated for your convenience.<br>
-      Please verify before issuing official invoice.</div>`;
-      document.getElementById('invoiceResult').innerHTML = html;
-    }
-
-    function updateTaxLabels() {
-      const saleType = document.getElementById('saleType').value;
-      // No extra logic here, just for future extension
-    }
-
-    // Print Invoice Function
-    function printInvoice() {
-      const printContents = document.getElementById('printInvoiceArea').innerHTML;
-      const originalContents = document.body.innerHTML;
-      document.body.innerHTML = printContents;
-      window.print();
-      document.body.innerHTML = originalContents;
-      window.location.reload();
-    }
-
-    // Save as PDF Function (using jsPDF and html2canvas)
-    function savePDF() {
-      const { jsPDF } = window.jspdf;
-      let doc = new jsPDF('l', 'pt', 'a4');
-      let pdfArea = document.getElementById('printInvoiceArea');
-      html2canvas(pdfArea).then(function(canvas) {
-        let imgData = canvas.toDataURL('image/png');
-        let width = doc.internal.pageSize.getWidth();
-        let height = (canvas.height * width) / canvas.width;
-        doc.addImage(imgData, 'PNG', 20, 20, width - 40, height - 40);
-        doc.save('Rajasthan_Ispat_Invoice.pdf');
-      });
-    }
-  </script>
-</body>
-</html>
+        <tr class="totals-row"><
