@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steel Section Weight Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background-color: #f4f9fc; }
+        .heading { text-align: center; font-size: 2em; margin-top: 28px; margin-bottom: 8px; font-weight: bold; color: #2e4372;}
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        .container { max-width: 600px; margin: 25px auto 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.08); }
+        label { display: block; margin-top: 15px; margin-bottom: 5px; font-weight: bold; color: #555;}
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #2e4372;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #1e2947; }
+        .result-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        .result-section p { margin: 8px 0; }
+        .result-section strong { color: #28a745; }
+        .error-message { color: red; font-weight: bold; margin-top:10px; }
+        .hidden { display: none; }
+        .footer {
+            text-align: center; 
+            color: #888;
+            font-size: 0.95em;
+            margin: 35px auto 0 auto;
+            max-width: 600px;
+            padding: 18px 0 10px 0;
+        }
+        @media (max-width: 700px) {
+            .container { max-width: 99vw; }
+            .footer { max-width: 99vw; font-size: 0.98em;}
+            .heading { font-size: 1.3em; }
+            h2 { font-size: 1.1em; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Start -->
+    <div class="heading">Rajasthan Ispat Udyog</div>
+    <h2>Steel Section Weight Calculator</h2>
+    <!-- Header End -->
+
+    <div class="container">
+        <label for="productType">Select Product Type:</label>
+        <select id="productType">
+            <option value="">--Select Product--</option>
+        </select>
+
+        <div id="standardInputs">
+            <label for="productSize">Select Size (mm):</label>
+            <select id="productSize">
+                <option value="">--Select Size--</option>
+            </select>
+        </div>
+
+        <div id="plateSheetInputs" class="hidden">
+            <label for="plateLength">Length (mm):</label>
+            <input type="number" id="plateLength" placeholder="Enter length in mm">
+            <label for="plateWidth">Width (mm):</label>
+            <input type="number" id="plateWidth" placeholder="Enter width in mm">
+            <label for="plateThickness">Thickness (mm):</label>
+            <input type="number" id="plateThickness" placeholder="Enter thickness in mm">
+            <button onclick="calculatePlateSheetWeight()">Calculate Plate/Sheet Weight</button>
+        </div>
+
+        <div class="result-section" id="primaryResultDisplay" style="display:none;">
+            <p>Selected Size: <strong id="selectedSizeDisplay"></strong></p>
+            <p>Weight per Foot (Kg/Ft): <strong id="kgFtResult"></strong></p>
+            <p>Weight per Meter (Kg/M): <strong id="kgMResult"></strong></p>
+        </div>
+
+        <div class="result-section" id="plateSheetResultDisplay" style="display:none;">
+            <p>Plate/Sheet Dimensions (L x W x T): <strong id="plateDimensionsDisplay"></strong> mm</p>
+            <p>Total Weight (Kg): <strong id="plateTotalWeightResult"></strong></p>
+            <p>Weight per Square Meter (Kg/m² for this thickness): <strong id="plateKgM2Result"></strong></p>
+        </div>
+        <div id="primaryErrorMessage" class="error-message"></div>
+    </div>
+
+    <div class="container" id="additionalCalculationsSection" style="display:none;">
+        <h2>Additional Calculations</h2>
+
+        <div>
+            <label for="standardLength">Standard Length per Piece (meters):</label>
+            <input type="number" id="standardLength" value="6">
+
+            <label for="totalWeightInput">Total Weight of Lot (Kg):</label>
+            <input type="number" id="totalWeightInput" placeholder="Enter total weight in Kg">
+            <button onclick="calculateNumberOfPieces()">1. Calculate Number of Pieces</button>
+            <div class="result-section" id="numPiecesResult" style="display:none;">
+                <p>Approx. Number of Pieces: <strong id="numPieces"></strong></p>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; border-top:1px solid #eee; padding-top:20px;">
+             <p><i>(Uses selected Kg/M and above Standard Length)</i></p>
+            <button onclick="calculateWeightOfOnePiece()">2. Calculate Weight of One Standard Piece</button>
+            <div class="result-section" id="weightOnePieceResult" style="display:none;">
+                <p>Weight of One Standard Piece (Kg): <strong id="weightOnePiece"></strong></p>
+            </div>
+        </div>
+         <div id="additionalCalcErrorMessage" class="error-message"></div>
+    </div>
+
+    <!-- Footer Start -->
+    <div class="footer">
+        &copy; Rajasthan Ispat Udyog. All rights reserved.<br>
+        This calculator is for informational purposes only.<br>
+        Calculated and actual weights may differ by ±2-3% (up to ±5%) due to manufacturing tolerances.<br>
+        Please verify all details before use.<br>
+    </div>
+    <!-- Footer End -->
+
+    <script>
+        // --- Your full steelData object from above (unchanged) ---
+        const steelData = {
+            "Angle": [
+                { size: "20x20x3", kgFt: 0.27, kgM: 0.9 }, { size: "20x20x4", kgFt: 0.33, kgM: 1.1 }, { size: "25x25x3", kgFt: 0.33, kgM: 1.1 }, { size: "25x25x4", kgFt: 0.42, kgM: 1.4 }, { size: "25x25x5", kgFt: 0.54, kgM: 1.8 }, { size: "25x25x6", kgFt: 0.66, kgM: 2.2 }, { size: "30x30x3", kgFt: 0.42, kgM: 1.4 }, { size: "30x30x4", kgFt: 0.54, kgM: 1.8 }, { size: "30x30x5", kgFt: 0.66, kgM: 2.2 }, { size: "30x30x6", kgFt: 0.84, kgM: 2.8 }, { size: "35x35x3", kgFt: 0.48, kgM: 1.6 }, { size: "35x35x4", kgFt: 0.63, kgM: 2.1 }, { size: "35x35x5", kgFt: 0.78, kgM: 2.6 }, { size: "35x35x6", kgFt: 0.84, kgM: 2.8 }, { size: "40x40x3", kgFt: 0.54, kgM: 1.8 }, { size: "40x40x4", kgFt: 0.72, kgM: 2.4 }, { size: "40x40x5", kgFt: 0.90, kgM: 3 }, { size: "40x40x6", kgFt: 1.05, kgM: 3.5 }, { size: "45x45x3", kgFt: 0.63, kgM: 2.1 }, { size: "45x45x4", kgFt: 0.81, kgM: 2.7 }, { size: "45x45x5", kgFt: 1.02, kgM: 3.4 }, { size: "45x45x6", kgFt: 1.05, kgM: 3.5 }, { size: "50x50x3", kgFt: 0.69, kgM: 2.3 }, { size: "50x50x4", kgFt: 0.90, kgM: 3 }, { size: "50x50x5", kgFt: 1.14, kgM: 3.80 },
+                { size: "50x50x6", kgFt: 1.39, kgM: 4.64 }, { size: "60x60x5", kgFt: 1.35, kgM: 4.50 }, { size: "60x60x6", kgFt: 1.62, kgM: 5.40 }, { size: "60x60x8", kgFt: 2.10, kgM: 7.00 }, { size: "65x65x5", kgFt: 1.47, kgM: 4.90 }, { size: "65x65x6", kgFt: 1.79, kgM: 5.97 }, { size: "65x65x8", kgFt: 2.38, kgM: 7.93 }, { size: "65x65x10", kgFt: 2.91, kgM: 9.68 }, { size: "75x75x5", kgFt: 1.71, kgM: 5.70 }, { size: "75x75x6", kgFt: 2.10, kgM: 7.00 }, { size: "75x75x8", kgFt: 2.75, kgM: 9.17 }, { size: "75x75x10", kgFt: 3.40, kgM: 11.33 }, { size: "80x80x6", kgFt: 2.19, kgM: 7.30 }, { size: "80x80x8", kgFt: 2.88, kgM: 9.60 }, { size: "80x80x10", kgFt: 3.54, kgM: 11.80 },{ size: "90x90x6", kgFt: 2.54, kgM: 8.45 }, { size: "90x90x8", kgFt: 3.34, kgM: 11.12 }, { size: "90x90x10", kgFt: 4.14, kgM: 13.80 },{ size: "90x90x12", kgFt: 4.74, kgM: 15.80 },{ size: "100x100x6", kgFt: 2.76, kgM: 9.20 },{ size: "100x100x8", kgFt: 3.74, kgM: 12.46 },{ size: "100x100x10", kgFt: 4.61, kgM: 15.35 },{ size: "100x100x12", kgFt: 5.47, kgM: 18.23 },{ size: "110x110x8", kgFt: 4.02, kgM: 13.40 },{ size: "110x110x10", kgFt: 4.98, kgM: 16.60 },{ size: "110x110x12", kgFt: 5.92, kgM: 19.70 },{ size: "130x130x8", kgFt: 4.77, kgM: 15.90 },{ size: "130x130x10", kgFt: 5.92, kgM: 19.70 },{ size: "130x130x12", kgFt: 7.06, kgM: 23.50 },{ size: "130x130x16", kgFt: 9.22, kgM: 30.70 },{ size: "150x150x8", kgFt: 5.53, kgM: 18.40 },{ size: "150x150x10", kgFt: 6.89, kgM: 22.93 },{ size: "150x150x12", kgFt: 8.44, kgM: 28.12 },{ size: "150x150x16", kgFt: 11.07, kgM: 36.87 },{ size: "150x150x20", kgFt: 13.64, kgM: 45.42 },{ size: "200x200x12", kgFt: 11.41, kgM: 38.01 },{ size: "200x200x16", kgFt: 15.00, kgM: 49.96 },{ size: "200x200x20", kgFt: 18.56, kgM: 61.80 },{ size: "200x200x25", kgFt: 22.86, kgM: 76.12 }
+            ],
+            "Channel": [
+                { size: "75x40 MC", kgFt: 2.23, kgM: 7.42 }, { size: "75x40 Medium", kgFt: 1.48, kgM: 4.92 }, { size: "75x40 Light", kgFt: 1.18, kgM: 3.92 }, { size: "100x50 MC", kgFt: 2.93, kgM: 9.75 }, { size: "100x50 Medium", kgFt: 2.48, kgM: 8.25 }, { size: "100x50 Light", kgFt: 1.98, kgM: 6.58 }, { size: "125x65 MC", kgFt: 4.05, kgM: 13.50 }, { size: "125x65 Light", kgFt: 2.95, kgM: 9.83 }, { size: "150x75 MC", kgFt: 5.13, kgM: 17.08 }, { size: "150x75 Light", kgFt: 3.95, kgM: 13.17 }, { size: "175x75 MC", kgFt: 6.01, kgM: 20.00 }, { size: "175x75 Light", kgFt: 4.95, kgM: 16.50 }, { size: "200x75 MC", kgFt: 6.88, kgM: 22.92 }, { size: "200x75 SAIL Old Mill", kgFt: 7.13, kgM: 23.75 }, { size: "200x75 Light", kgFt: 5.88, kgM: 19.58 }, { size: "250x82 MC", kgFt: 10.76, kgM: 35.83 }, { size: "300x90 MC", kgFt: 11.26, kgM: 37.50 }, { size: "400x100 MC", kgFt: 15.77, kgM: 52.50 }
+            ],
+            "Beam": [
+                { size: "100x50 MB", kgFt: 2.40, kgM: 8.00 }, { size: "100x116 MB", kgFt: 6.91, kgM: 23.00 }, { size: "100x116 MB Light", kgFt: 4.92, kgM: 16.40 }, { size: "100x116 Light", kgFt: 3.93, kgM: 13.10 }, { size: "125x70 MB", kgFt: 3.93, kgM: 13.10 }, { size: "125x70 Light", kgFt: 3.00, kgM: 10.00 }, { size: "150x75 MB", kgFt: 4.65, kgM: 15.50 }, { size: "150x80 RINL", kgFt: 4.38, kgM: 14.58 }, { size: "150x75 MB Light", kgFt: 4.05, kgM: 13.50 }, { size: "150x75 Light", kgFt: 3.00, kgM: 10.00 }, { size: "175x85 MB", kgFt: 6.03, kgM: 20.08 }, { size: "175x85 Light", kgFt: 5.02, kgM: 16.70 }, { size: "200x100 MB", kgFt: 7.76, kgM: 25.83 }, { size: "200x150 MB", kgFt: 15.77, kgM: 52.50 }, { size: "200x150 Light", kgFt: 12.91, kgM: 43.00 }, { size: "250x125 MB", kgFt: 11.51, kgM: 38.33 }, { size: "300x140 MB", kgFt: 14.14, kgM: 47.08 }, { size: "350x140 MB", kgFt: 16.14, kgM: 53.75 }, { size: "400x140 MB", kgFt: 19.02, kgM: 63.33 }, { size: "450x150 MB", kgFt: 22.40, kgM: 74.58 }, { size: "500x180 MB", kgFt: 26.90, kgM: 89.58 }, { size: "600x210 MB", kgFt: 38.16, kgM: 127.08 }
+            ],
+            "NPB": [
+                { size: "100x55x8.10", kgFt: 2.5, kgM: 8.33 }, { size: "200x100x22.36", kgFt: 7.0, kgM: 23.33 }, { size: "200x100x25.09", kgFt: 7.8, kgM: 25.83 }, { size: "250x125x30.11", kgFt: 9.4, kgM: 31.25 }, { size: "300x150x36.53", kgFt: 11.4, kgM: 37.92 }, { size: "300x150x42.24", kgFt: 13.1, kgM: 43.75 }, { size: "300x150x49.32", kgFt: 15.4, kgM: 51.25 }, { size: "350x170x50.22", kgFt: 15.6, kgM: 52.08 }, { size: "350x170x57.10", kgFt: 17.8, kgM: 59.17 }, { size: "350x170x66.05", kgFt: 20.5, kgM: 68.33 }, { size: "400x180x57.38", kgFt: 17.8, kgM: 59.17 }, { size: "400x180x66.31", kgFt: 20.5, kgM: 68.33 }, { size: "400x180x75.67", kgFt: 23.5, kgM: 78.33 }, { size: "450x150x67.16", kgFt: 20.9, kgM: 69.58 }, { size: "450x190x77.58", kgFt: 24.0, kgM: 80.00 }, { size: "450x190x92.37", kgFt: 28.7, kgM: 95.42 }, { size: "500x200x79.36", kgFt: 24.9, kgM: 82.92 }, { size: "500x200x90.69", kgFt: 28.3, kgM: 94.17 }, { size: "500x200x107.32", kgFt: 33.8, kgM: 112.50 }, { size: "600x220x107.57", kgFt: 33.5, kgM: 111.67 }, { size: "600x220x122.45", kgFt: 38.2, kgM: 127.08 }, { size: "600x220x154.47", kgFt: 48.0, kgM: 160.00 }, { size: "750x270x174.54", kgFt: 54.3, kgM: 180.83 }, { size: "750x270x202.49", kgFt: 62.9, kgM: 209.58 }
+            ],
+            "WPB": [
+                { size: "160x160x30.44", kgFt: 9.5, kgM: 31.67 }, { size: "200x200x37.34", kgFt: 11.6, kgM: 38.75 }, { size: "200x200x42.26", kgFt: 13.3, kgM: 44.17 }, { size: "200x200x61.30", kgFt: 19.0, kgM: 63.33 }, { size: "240x240x60.32", kgFt: 18.8, kgM: 62.50 }, { size: "240x240x83.20", kgFt: 25.8, kgM: 85.83 }, { size: "300x300x100.85", kgFt: 31.3, kgM: 104.17 }, { size: "300x300x117.03", kgFt: 36.3, kgM: 120.83 }
+            ],
+            "Rounds": [
+                { size: "8", kgFt: 0.12, kgM: 0.40 }, { size: "10", kgFt: 0.19, kgM: 0.62 }, { size: "12", kgFt: 0.27, kgM: 0.89 }, { size: "16", kgFt: 0.48, kgM: 1.59 }, { size: "18", kgFt: 0.60, kgM: 2.01 }, { size: "20", kgFt: 0.74, kgM: 2.48 }, { size: "22", kgFt: 0.90, kgM: 3.00 }, { size: "25", kgFt: 1.16, kgM: 3.88 }, { size: "28", kgFt: 1.46, kgM: 4.86 }, { size: "32", kgFt: 1.91, kgM: 6.35 }, { size: "36", kgFt: 2.41, kgM: 8.04 }, { size: "38.5", kgFt: 2.76, kgM: 9.19 }, { size: "40", kgFt: 2.98, kgM: 9.92 }, { size: "42", kgFt: 3.28, kgM: 10.94 }, { size: "45", kgFt: 3.77, kgM: 12.56 }, { size: "46.5", kgFt: 4.03, kgM: 13.41 }, { size: "48", kgFt: 4.29, kgM: 14.28 }, { size: "50", kgFt: 4.65, kgM: 15.50 }, { size: "53", kgFt: 5.23, kgM: 17.42 }, { size: "56", kgFt: 5.84, kgM: 19.44 }, { size: "60", kgFt: 6.70, kgM: 22.32 }, { size: "63", kgFt: 7.39, kgM: 24.61 }, { size: "65", kgFt: 7.87, kgM: 26.20 }, { size: "70", kgFt: 9.12, kgM: 30.38 }, { size: "75", kgFt: 10.47, kgM: 34.88 }, { size: "80", kgFt: 11.92, kgM: 39.68 }, { size: "90", kgFt: 15.08, kgM: 50.22 }, { size: "100", kgFt: 18.62, kgM: 62.00 }, { size: "110", kgFt: 22.53, kgM: 75.02 }, { size: "120", kgFt: 26.81, kgM: 89.28 }, { size: "125", kgFt: 29.09, kgM: 96.88 }, { size: "140", kgFt: 36.49, kgM: 121.52 }, { size: "150", kgFt: 41.89, kgM: 139.50 }, { size: "160", kgFt: 47.66, kgM: 158.72 }, { size: "170", kgFt: 53.81, kgM: 179.18 }, { size: "180", kgFt: 60.32, kgM: 200.88 }, { size: "190", kgFt: 67.21, kgM: 223.82 }, { size: "200", kgFt: 74.47, kgM: 248.00 }
+            ],
+            "Squares": [
+                { size: "8", kgFt: 0.15, kgM: 0.50 }, { size: "10", kgFt: 0.23, kgM: 0.78 }, { size: "12", kgFt: 0.34, kgM: 1.12 }, { size: "16", kgFt: 0.60, kgM: 1.99 }, { size: "18", kgFt: 0.75, kgM: 2.52 }, { size: "20", kgFt: 0.93, kgM: 3.10 }, { size: "22", kgFt: 1.13, kgM: 3.76 }, { size: "25", kgFt: 1.45, kgM: 4.85 }, { size: "28", kgFt: 1.82, kgM: 6.09 }, { size: "32", kgFt: 2.38, kgM: 7.95 }, { size: "36", kgFt: 3.02, kgM: 10.06 }, { size: "38.5", kgFt: 3.45, kgM: 11.51 }, { size: "40", kgFt: 3.72, kgM: 12.42 }, { size: "42", kgFt: 4.11, kgM: 13.69 }, { size: "45", kgFt: 4.71, kgM: 15.72 }, { size: "46.5", kgFt: 5.03, kgM: 16.78 }, { size: "48", kgFt: 5.36, kgM: 17.88 }, { size: "50", kgFt: 5.82, kgM: 19.41 }, { size: "53", kgFt: 6.54, kgM: 21.80 }, { size: "56", kgFt: 7.30, kgM: 24.34 }, { size: "60", kgFt: 8.38, kgM: 27.94 }, { size: "63", kgFt: 9.24, kgM: 30.81 }, { size: "65", kgFt: 9.83, kgM: 32.80 }, { size: "70", kgFt: 11.40, kgM: 38.04 }, { size: "75", kgFt: 13.09, kgM: 43.66 }, { size: "80", kgFt: 14.89, kgM: 49.68 }, { size: "90", kgFt: 18.85, kgM: 62.88 }, { size: "100", kgFt: 23.27, kgM: 77.62 }, { size: "110", kgFt: 28.16, kgM: 93.93 }, { size: "120", kgFt: 33.51, kgM: 111.78 }, { size: "125", kgFt: 36.36, kgM: 121.29 }, { size: "140", kgFt: 45.62, kgM: 152.14 }, { size: "150", kgFt: 52.36, kgM: 174.65 }, { size: "160", kgFt: 59.58, kgM: 198.72 }, { size: "170", kgFt: 67.26, kgM: 224.33 }, { size: "180", kgFt: 75.41, kgM: 251.50 }, { size: "190", kgFt: 84.02, kgM: 280.22 }, { size: "200", kgFt: 93.09, kgM: 310.50 }
+            ],
+            "Flats": [
+                { size: "12x3", kgFt: 0.09, kgM: 0.28 }, { size: "12x5", kgFt: 0.14, kgM: 0.47 }, { size: "18x4", kgFt: 0.17, kgM: 0.57 }, { size: "20x3", kgFt: 0.14, kgM: 0.47 }, { size: "20x5", kgFt: 0.24, kgM: 0.79 }, { size: "20x6", kgFt: 0.29, kgM: 0.94 }, { size: "25x3", kgFt: 0.18, kgM: 0.60 }, { size: "25x5", kgFt: 0.31, kgM: 1.00 }, { size: "25x6", kgFt: 0.37, kgM: 1.20 }, { size: "25x8", kgFt: 0.49, kgM: 1.60 }, { size: "25x10", kgFt: 0.61, kgM: 2.00 }, { size: "25x12", kgFt: 0.73, kgM: 2.40 }, { size: "32x3", kgFt: 0.24, kgM: 0.80 }, { size: "32x5", kgFt: 0.40, kgM: 1.30 }, { size: "32x6", kgFt: 0.46, kgM: 1.50 }, { size: "32x8", kgFt: 0.61, kgM: 2.00 }, { size: "32x10", kgFt: 0.76, kgM: 2.50 }, { size: "32x12", kgFt: 0.92, kgM: 3.00 }, { size: "32x16", kgFt: 1.22, kgM: 4.00 }, { size: "40x3", kgFt: 0.27, kgM: 0.90 }, { size: "40x5", kgFt: 0.49, kgM: 1.60 }, { size: "40x6", kgFt: 0.58, kgM: 1.90 }, { size: "40x8", kgFt: 0.76, kgM: 2.50 }, { size: "40x10", kgFt: 0.95, kgM: 3.10 }, { size: "40x12", kgFt: 1.16, kgM: 3.80 }, { size: "40x16", kgFt: 1.52, kgM: 5.00 }, { size: "40x20", kgFt: 1.92, kgM: 6.30 }, { size: "40x25", kgFt: 2.41, kgM: 7.90 }, { size: "40x32", kgFt: 3.06, kgM: 10.05},{ size: "50x5", kgFt: 0.60, kgM: 1.98 }, { size: "50x6", kgFt: 0.73, kgM: 2.40 }, { size: "50x8", kgFt: 0.96, kgM: 3.14 }, { size: "50x10", kgFt: 1.19, kgM: 3.98 }, { size: "50x12", kgFt: 1.43, kgM: 4.70 },
+                { size: "125x10", kgFt: 2.99, kgM: 9.80 }, { size: "125x12", kgFt: 3.60, kgM: 11.80 }, { size: "125x16", kgFt: 4.79, kgM: 15.75 }, { size: "125x20", kgFt: 5.98, kgM: 19.60 }, { size: "125x25", kgFt: 7.47, kgM: 24.50 }, { size: "125x32", kgFt: 9.57, kgM: 31.40 }, { size: "150x6", kgFt: 2.17, kgM: 7.10 }, { size: "150x8", kgFt: 2.87, kgM: 9.40 }, { size: "150x10", kgFt: 3.60, kgM: 11.80 }, { size: "150x12", kgFt: 4.30, kgM: 14.10 }, { size: "150x16", kgFt: 5.73, kgM: 18.80 }, { size: "150x20", kgFt: 7.20, kgM: 23.60 }, { size: "150x25", kgFt: 8.99, kgM: 29.50 }, { size: "150x32", kgFt: 11.49, kgM: 37.70 }, { size: "150x40", kgFt: 14.36, kgM: 47.10}, { size: "200x6", kgFt: 2.87, kgM: 9.40 }, { size: "200x8", kgFt: 3.84, kgM: 12.60 }, { size: "200x10", kgFt: 4.79, kgM: 15.70 }, { size: "200x12", kgFt: 5.73, kgM: 18.80 }, { size: "200x16", kgFt: 7.65, kgM: 25.10 }, { size: "200x20", kgFt: 9.57, kgM: 31.40 }, { size: "250x10", kgFt: 5.99, kgM: 19.63 }, { size: "250x12", kgFt: 7.18, kgM: 23.55 }, { size: "250x16", kgFt: 9.58, kgM: 31.40 }, { size: "250x20", kgFt: 11.97, kgM: 39.25 }, { size: "250x25", kgFt: 14.96, kgM: 49.06 },  { size: "300x6", kgFt: 4.31, kgM: 14.13 }, { size: "300x8", kgFt: 5.74, kgM: 18.84 }, { size: "300x10", kgFt: 7.18, kgM: 23.55 }, { size: "300x12", kgFt: 8.63, kgM: 28.30 }, { size: "300x16", kgFt: 11.49, kgM: 37.70}, { size: "300x20", kgFt: 14.45, kgM: 47.40 }, { size: "300x25", kgFt: 17.96, kgM: 58.90 },
+                { size: "50x16", kgFt: 1.92, kgM: 6.30 }, { size: "50x20", kgFt: 2.38, kgM: 7.80 }, { size: "50x25", kgFt: 2.99, kgM: 9.80 }, { size: "50x32", kgFt: 3.80, kgM: 12.50 }, { size: "50x40", kgFt: 4.79, kgM: 15.70 }, { size: "65x6", kgFt: 0.92, kgM: 3.00 }, { size: "65x8", kgFt: 1.22, kgM: 4.00 }, { size: "65x10", kgFt: 1.49, kgM: 4.90 }, { size: "65x12", kgFt: 1.80, kgM: 5.90 }, { size: "65x16", kgFt: 2.41, kgM: 7.90 }, { size: "65x20", kgFt: 3.02, kgM: 9.90 }, { size: "65x25", kgFt: 3.78, kgM: 12.40 }, { size: "65x32", kgFt: 4.91, kgM: 16.48 }, { size: "65x40", kgFt: 6.19, kgM: 20.41 }, { size: "75x6", kgFt: 1.07, kgM: 3.50 }, { size: "75x8", kgFt: 1.43, kgM: 4.70 }, { size: "75x10", kgFt: 1.80, kgM: 5.90 }, { size: "75x12", kgFt: 2.17, kgM: 7.10 }, { size: "75x16", kgFt: 2.87, kgM: 9.40 }, { size: "75x20", kgFt: 3.60, kgM: 11.80 }, { size: "75x25", kgFt: 4.48, kgM: 14.70 }, { size: "75x32", kgFt: 5.71, kgM: 18.84 }, { size: "75x40", kgFt: 7.20, kgM: 23.60 }, { size: "100x6", kgFt: 1.43, kgM: 4.70 }, { size: "100x8", kgFt: 1.92, kgM: 6.30 }, { size: "100x10", kgFt: 2.38, kgM: 7.80 }, { size: "100x12", kgFt: 2.87, kgM: 9.40 }, { size: "100x16", kgFt: 3.84, kgM: 12.60 }, { size: "100x20", kgFt: 4.79, kgM: 15.70 }, { size: "100x25", kgFt: 5.98, kgM: 19.60 }, { size: "100x32", kgFt: 7.65, kgM: 25.10 }, { size: "100x40", kgFt: 9.57, kgM: 31.40 }, { size: "125x6", kgFt: 1.80, kgM: 5.90 }, { size: "125x8", kgFt: 2.38, kgM: 7.80 }
+            ],
+            "HR Plate": [],
+            "HR Sheet": []
+        };
+
+        const productTypeSelect = document.getElementById('productType');
+        const productSizeSelect = document.getElementById('productSize');
+        const primaryResultDisplay = document.getElementById('primaryResultDisplay');
+        const selectedSizeDisplay = document.getElementById('selectedSizeDisplay');
+        const kgFtResult = document.getElementById('kgFtResult');
+        const kgMResult = document.getElementById('kgMResult');
+        const primaryErrorMessageDiv = document.getElementById('primaryErrorMessage');
+        const standardInputsDiv = document.getElementById('standardInputs');
+        const plateSheetInputsDiv = document.getElementById('plateSheetInputs');
+        const plateSheetResultDisplay = document.getElementById('plateSheetResultDisplay');
+        const plateDimensionsDisplay = document.getElementById('plateDimensionsDisplay');
+        const plateTotalWeightResult = document.getElementById('plateTotalWeightResult');
+        const plateKgM2Result = document.getElementById('plateKgM2Result');
+        const additionalCalculationsSection = document.getElementById('additionalCalculationsSection');
+        const numPiecesResultDiv = document.getElementById('numPiecesResult');
+        const weightOnePieceResultDiv = document.getElementById('weightOnePieceResult');
+        const additionalCalcErrorMsgDiv = document.getElementById('additionalCalcErrorMessage');
+        let currentKgM = 0;
+
+        // Populate Product Types
+        for (const type in steelData) {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            productTypeSelect.appendChild(option);
+        }
+
+        productTypeSelect.addEventListener('change', function() {
+            const selectedType = this.value;
+            productSizeSelect.innerHTML = '<option value="">--Select Size--</option>';
+            primaryResultDisplay.style.display = 'none';
+            plateSheetResultDisplay.style.display = 'none';
+            additionalCalculationsSection.style.display = 'none';
+            primaryErrorMessageDiv.textContent = '';
+            currentKgM = 0;
+
+            if (selectedType === "HR Plate" || selectedType === "HR Sheet") {
+                standardInputsDiv.classList.add('hidden');
+                plateSheetInputsDiv.classList.remove('hidden');
+                document.getElementById('plateLength').value = '';
+                document.getElementById('plateWidth').value = '';
+                document.getElementById('plateThickness').value = '';
+            } else {
+                standardInputsDiv.classList.remove('hidden');
+                plateSheetInputsDiv.classList.add('hidden');
+                if (selectedType && steelData[selectedType]) {
+                    steelData[selectedType].forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.size;
+                        option.textContent = item.size;
+                        productSizeSelect.appendChild(option);
+                    });
+                }
+            }
+        });
+
+        productSizeSelect.addEventListener('change', function() {
+            const selectedType = productTypeSelect.value;
+            const selectedSizeValue = this.value;
+            primaryResultDisplay.style.display = 'none';
+            additionalCalculationsSection.style.display = 'none';
+            primaryErrorMessageDiv.textContent = '';
+            currentKgM = 0;
+
+            if (selectedType && selectedSizeValue && steelData[selectedType]) {
+                const selectedItem = steelData[selectedType].find(item => item.size === selectedSizeValue);
+
+                if (selectedItem) {
+                    selectedSizeDisplay.textContent = selectedItem.size;
+                    kgFtResult.textContent = selectedItem.kgFt.toFixed(2);
+                    kgMResult.textContent = selectedItem.kgM.toFixed(2);
+                    currentKgM = selectedItem.kgM;
+                    primaryResultDisplay.style.display = 'block';
+                    additionalCalculationsSection.style.display = 'block';
+                    numPiecesResultDiv.style.display = 'none';
+                    weightOnePieceResultDiv.style.display = 'none';
+                } else {
+                    primaryErrorMessageDiv.textContent = 'Selected size data not found.';
+                }
+            }
+        });
+
+        function calculatePlateSheetWeight() {
+            const L_mm = parseFloat(document.getElementById('plateLength').value);
+            const W_mm = parseFloat(document.getElementById('plateWidth').value);
+            const T_mm = parseFloat(document.getElementById('plateThickness').value);
+            primaryErrorMessageDiv.textContent = '';
+
+            if (isNaN(L_mm) || isNaN(W_mm) || isNaN(T_mm) || L_mm <= 0 || W_mm <= 0 || T_mm <= 0) {
+                primaryErrorMessageDiv.textContent = 'Please enter valid positive numbers for Length, Width, and Thickness.';
+                plateSheetResultDisplay.style.display = 'none';
+                return;
+            }
+
+            const L_m = L_mm / 1000;
+            const W_m = W_mm / 1000;
+            const totalWeight = L_m * W_m * T_mm * 7.85;
+            const kgPerM2 = T_mm * 7.85;
+
+            plateDimensionsDisplay.textContent = `${L_mm} x ${W_mm} x ${T_mm}`;
+            plateTotalWeightResult.textContent = totalWeight.toFixed(2);
+            plateKgM2Result.textContent = kgPerM2.toFixed(2);
+            plateSheetResultDisplay.style.display = 'block';
+            additionalCalculationsSection.style.display = 'none';
+        }
+
+        function calculateNumberOfPieces() {
+            additionalCalcErrorMsgDiv.textContent = '';
+            if (currentKgM === 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Please select a standard product and size first to get Kg/M.';
+                numPiecesResultDiv.style.display = 'none';
+                return;
+            }
+            const totalWeight = parseFloat(document.getElementById('totalWeightInput').value);
+            const stdLength = parseFloat(document.getElementById('standardLength').value);
+
+            if (isNaN(totalWeight) || totalWeight <= 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Please enter a valid positive Total Weight.';
+                numPiecesResultDiv.style.display = 'none';
+                return;
+            }
+            if (isNaN(stdLength) || stdLength <= 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Please enter a valid positive Standard Length.';
+                numPiecesResultDiv.style.display = 'none';
+                return;
+            }
+            const weightPerPiece = currentKgM * stdLength;
+            if (weightPerPiece <= 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Calculated weight per piece is zero or less. Check Kg/M and Standard Length.';
+                numPiecesResultDiv.style.display = 'none';
+                return;
+            }
+            const numPieces = totalWeight / weightPerPiece;
+            document.getElementById('numPieces').textContent = numPieces.toFixed(2);
+            numPiecesResultDiv.style.display = 'block';
+        }
+
+        function calculateWeightOfOnePiece() {
+            additionalCalcErrorMsgDiv.textContent = '';
+            if (currentKgM === 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Please select a standard product and size first to get Kg/M.';
+                weightOnePieceResultDiv.style.display = 'none';
+                return;
+            }
+            const stdLength = parseFloat(document.getElementById('standardLength').value);
+            if (isNaN(stdLength) || stdLength <= 0) {
+                additionalCalcErrorMsgDiv.textContent = 'Please enter a valid positive Standard Length.';
+                weightOnePieceResultDiv.style.display = 'none';
+                return;
+            }
+            const weightPerPiece = currentKgM * stdLength;
+            document.getElementById('weightOnePiece').textContent = weightPerPiece.toFixed(2);
+            weightOnePieceResultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
