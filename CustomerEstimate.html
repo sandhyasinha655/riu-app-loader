@@ -2,6 +2,8 @@
 <html>
 <head>
   <title>Rajasthan Ispat Udyog - Customer Estimate Generator</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: Arial; max-width: 950px; margin: 30px auto; background: #f6f9f9; }
     .heading { text-align: center; font-size: 2em; margin-bottom: 8px; font-weight: bold; color: #2e4372;}
@@ -22,7 +24,6 @@
     .section { background: #fff; border-radius: 8px; box-shadow: 0 0 8px #ccc; padding: 18px 16px; }
     .print-save-btns { display: flex; justify-content: center; gap: 18px; margin-top: 25px;}
     .hide { display: none;}
-    /* Customer details: Only 3 fields in 1st row */
     .customer-row {
       display: flex;
       gap: 18px;
@@ -33,7 +34,6 @@
     .customer-row label { min-width: 110px; }
     .customer-row input[type="text"], 
     .customer-row input[type="date"] { width: 200px; }
-
     .email-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px;}
     .email-row label { min-width: 90px;}
     .email-row input[type="email"] { width: 300px;}
@@ -49,7 +49,6 @@
       body { background: #fff;}
     }
   </style>
-  <!-- Libraries for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -57,7 +56,6 @@
   <div class="heading">Rajasthan Ispat Udyog</div>
   <h2>Customer Estimate Generator</h2>
   <div class="section">
-    <!-- Customer Details -->
     <form id="queryForm" autocomplete="off" onsubmit="return false;">
       <div class="customer-row">
         <label>Customer Name</label>
@@ -71,7 +69,6 @@
         <label>Email</label>
         <input type="email" id="customerEmail">
       </div>
-      <!-- Product Query Section -->
       <h4 style="margin:8px 0 4px 0;">Add Product(s) for Estimate</h4>
       <div class="form-row">
         <label>Product</label>
@@ -125,7 +122,6 @@
         <tbody id="prodTableBody"></tbody>
       </table>
     </div>
-    <!-- Charges and Estimate Section -->
     <div id="estimateSection">
       <div class="form-row">
         <label>GST Type</label>
@@ -160,14 +156,12 @@
   </div>
   <script>
     let products = [];
-
     function convertLengthToMM(val, unit) {
       if (unit === "mm") return val;
       if (unit === "ft") return val * 304.8;
       if (unit === "m") return val * 1000;
       return val;
     }
-
     function addProduct() {
       const prodType = document.getElementById('prodType').value;
       const t = parseFloat(document.getElementById('prodThick').value) || 0;
@@ -179,15 +173,13 @@
         alert("Please enter valid product details!");
         return;
       }
-      const rate = 0; // Default, user can input/edit after
+      const rate = 0;
       const l_mm = convertLengthToMM(l, lUnit);
-      // Standard rectangle calculation
       const volPerPc = (t/10) * (w/10) * (l_mm/10);
-      const density = 7.85; // g/cm³
+      const density = 7.85;
       const wtPerPc = volPerPc * density / 1000;
       const totalWt = wtPerPc * qty;
       const amount = wtPerPc * qty * rate;
-
       products.push({
         prodType, t, w,
         l: l_mm,
@@ -204,7 +196,6 @@
       document.getElementById('printBtns').classList.add('hide');
       document.getElementById('estimateResult').innerHTML = "";
     }
-
     function clearProductInputs() {
       document.getElementById('prodThick').value = "";
       document.getElementById('prodWidth').value = "";
@@ -212,7 +203,6 @@
       document.getElementById('prodQty').value = 1;
       document.getElementById('prodLenUnit').value = "mm";
     }
-
     function updateProductsTable() {
       const tbody = document.getElementById('prodTableBody');
       tbody.innerHTML = "";
@@ -234,38 +224,28 @@
         </tr>`;
       });
     }
-
     function updateAmount(idx) {
       const rate = parseFloat(document.getElementById(`rate_${idx}`).value) || 0;
       products[idx].rate = rate;
       products[idx].amount = rate * products[idx].calcWt;
       document.getElementById(`amt_${idx}`).textContent = products[idx].amount.toFixed(2);
     }
-
     function deleteProduct(idx) {
       products.splice(idx, 1);
       updateProductsTable();
       document.getElementById('printBtns').classList.add('hide');
       document.getElementById('estimateResult').innerHTML = "";
     }
-
-    function updateGSTLabel() {
-      // Optionally update GST label if you want to show different tax text
-    }
-
+    function updateGSTLabel() {}
     function generateEstimate() {
       if (products.length === 0) {
         alert('Please add at least one product!');
         return;
       }
-
-      // Take customer details
       const cname = document.getElementById('customerName').value || "";
       const cemail = document.getElementById('customerEmail').value || "";
       const cmobile = document.getElementById('customerMobile').value || "";
       const estimateDate = document.getElementById('estimateDate').value || (new Date()).toISOString().slice(0,10);
-
-      // Get all rate values (in case not changed)
       let totalTaxable = 0;
       products.forEach((p, i) => {
         let rate = parseFloat(document.getElementById(`rate_${i}`)?.value) || 0;
@@ -273,19 +253,18 @@
         products[i].amount = rate * products[i].calcWt;
         totalTaxable += products[i].amount;
       });
-
       const gstType = document.getElementById('gstType').value;
       let freight = parseFloat(document.getElementById('freight').value) || 0;
       let addl = parseFloat(document.getElementById('additionalCharge').value) || 0;
       let remarks = document.getElementById('remarks').value || '';
-      let gstRate = 0.09; // 9%
-      let sgst = gstType === 'local' ? totalTaxable * gstRate : 0;
-      let cgst = gstType === 'local' ? totalTaxable * gstRate : 0;
-      let igst = gstType === 'igst' ? totalTaxable * 2 * gstRate : 0;
+      let gstRate = 0.09;
+      // GST should be calculated on Taxable + Freight + Additional Charge
+      let gstBase = totalTaxable + freight + addl;
+      let sgst = gstType === 'local' ? gstBase * gstRate : 0;
+      let cgst = gstType === 'local' ? gstBase * gstRate : 0;
+      let igst = gstType === 'igst' ? gstBase * 2 * gstRate : 0;
       let gstTotal = sgst + cgst + igst;
-      let grandTotal = totalTaxable + gstTotal + freight + addl;
-
-      // Estimate HTML
+      let grandTotal = gstBase + gstTotal;
       let html = `<div id="printEstimateArea">
       <div style="text-align:center; font-size:1.5em; font-weight:bold; margin-bottom:6px; color:#2e4372;">Rajasthan Ispat Udyog</div>
       <div style="text-align:center; font-size:1.08em; font-weight:bold; margin-bottom:12px;">ESTIMATE / QUOTATION</div>
@@ -324,12 +303,12 @@
       html += `
         <tr class="totals-row"><td colspan="7" class="right">Taxable Value (₹)</td>
         <td>${totalTaxable.toFixed(2)}</td></tr>
+        <tr><td colspan="7" class="right">Freight Charge</td><td>${freight.toFixed(2)}</td></tr>
+        <tr><td colspan="7" class="right">Additional Charge</td><td>${addl.toFixed(2)}</td></tr>
         <tr><td colspan="7" class="right">SGST @9%</td><td>${sgst.toFixed(2)}</td></tr>
         <tr><td colspan="7" class="right">CGST @9%</td><td>${cgst.toFixed(2)}</td></tr>
         <tr><td colspan="7" class="right">IGST @18%</td><td>${igst.toFixed(2)}</td></tr>
         <tr><td colspan="7" class="right">Total GST</td><td>${gstTotal.toFixed(2)}</td></tr>
-        <tr><td colspan="7" class="right">Freight Charge</td><td>${freight.toFixed(2)}</td></tr>
-        <tr><td colspan="7" class="right">Additional Charge</td><td>${addl.toFixed(2)}</td></tr>
         <tr class="totals-row"><td colspan="7" class="right">Grand Total (₹)</td>
         <td>${grandTotal.toFixed(2)}</td></tr>
       </tbody></table>`;
@@ -343,8 +322,6 @@
       document.getElementById('estimateResult').innerHTML = html;
       document.getElementById('printBtns').classList.remove('hide');
     }
-
-    // Print Estimate Function
     function printEstimate() {
       const printContents = document.getElementById('printEstimateArea').innerHTML;
       const originalContents = document.body.innerHTML;
@@ -353,8 +330,6 @@
       document.body.innerHTML = originalContents;
       window.location.reload();
     }
-
-    // Save as PDF Function (using jsPDF and html2canvas)
     function savePDF() {
       const { jsPDF } = window.jspdf;
       let doc = new jsPDF('l', 'pt', 'a4');
